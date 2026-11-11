@@ -1,0 +1,71 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - unified-all-prs
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows App & Installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: 'stable'
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: web_ui/package-lock.json
+
+      - name: Build WebUI Bundle
+        working-directory: web_ui
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Install Flutter Dependencies
+        run: flutter pub get
+
+      - name: Build Flutter Windows Application
+        run: flutter build windows --release
+
+      - name: Download Visual C++ Redistributable
+        shell: pwsh
+        run: |
+          $DestDir = "${{ github.workspace }}\build\windows\x64\runner"
+          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "$DestDir\vc_redist.x64.exe"
+
+      - name: Build Windows Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $ISCC = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $ISCC /DPRE_RELEASE=1 /DNIGHTLY=1 /DMyAppVersion="1.7.0-custom" /DMyAppBuildDir="${{ github.workspace }}\build\windows\x64\runner\Release" /DMyAppLicenseFile="${{ github.workspace }}\LICENSE" /DMyAppIconFile="${{ github.workspace }}\windows\runner\resources\app_icon.ico" "installers\windows\setup.iss"
+          Copy-Item "installers\windows\Front_Porch_AI_Beta_Setup.exe" -Destination "Front_Porch_AI_Setup.exe" -Force
+
+      - name: Compress Standalone Portable Folder
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "Front_Porch_AI_Windows_Portable.zip"
+
+      - name: Upload Windows Installer & Portable Zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Front-Porch-AI-Windows-Build
+          path: |
+            Front_Porch_AI_Setup.exe
+            Front_Porch_AI_Windows_Portable.zip
