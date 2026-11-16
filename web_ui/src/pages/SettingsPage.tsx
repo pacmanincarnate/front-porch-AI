@@ -11,6 +11,7 @@ import { BubbleOpacitySettings } from '../components/BubbleOpacitySettings';
 import { FollowStreamingSettings } from '../components/FollowStreamingSettings';
 import { AppearanceSettings } from '../components/AppearanceSettings';
 import { MessageSideSettings } from '../components/MessageSideSettings';
+import { AdultThemesSettings } from '../components/AdultThemesSettings';
 import { PorchLifeSettings } from '../components/PorchLifeSettings';
 import { PromptSettingsCard } from '../components/PromptSettingsCard';
 import type { BuiltInPrompt, SavedPrompt } from '../components/PromptSlot';
@@ -191,6 +192,7 @@ export function SettingsPage() {
   // savedFields of the last load or save.
   const [savedForm, setSavedForm] = useState('');
   const [personaDirty, setPersonaDirty] = useState(false);
+  const [adultThemes, setAdultThemes] = useState<boolean | undefined>(undefined);
   // The last load or save as the host holds it, which a preset write moves.
   const base = useRef<Settings | null>(null);
   const genPresets = useGenPresets();
@@ -406,7 +408,7 @@ export function SettingsPage() {
     selectedId === 'custom';
 
   return (
-    <div className="page">
+    <div className="page settings-page">
       {prompt}
       <h2>Settings</h2>
 
@@ -422,6 +424,8 @@ export function SettingsPage() {
           <BubbleOpacitySettings />
           <ChatColorsSettings />
         </div>
+
+        <AdultThemesSettings onAdultThemesChange={setAdultThemes} />
 
         <PromptSettingsCard
           systemPrompt={s.systemPrompt}
@@ -441,7 +445,7 @@ export function SettingsPage() {
 
       <div className="settings-section" data-section="porch-life">
         <h3 className="settings-section-heading">Porch Life</h3>
-        <PorchLifeSettings />
+        <PorchLifeSettings adultThemesOverride={adultThemes} />
       </div>
 
       <div className="settings-section" data-section="generation">
